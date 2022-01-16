@@ -7,9 +7,12 @@ import (
 	"fmt"
 	"github.com/markusressel/keyboard-backlight-daemon/internal/config"
 	"github.com/markusressel/keyboard-backlight-daemon/internal/light"
+	"github.com/markusressel/keyboard-backlight-daemon/internal/util"
 	"github.com/oklog/run"
 	"os"
 	"os/signal"
+	"path/filepath"
+	"regexp"
 	"syscall"
 	"time"
 )
@@ -56,27 +59,13 @@ func (s *KbdService) Run() {
 
 	var g run.Group
 	{
-		// TODO: find these paths dynamically
-		paths := []string{
-			"/dev/input/event2",
-			"/dev/input/event3",
-
-			"/dev/input/mice",
-			"/dev/input/event5",
-			"/dev/input/event6",
-		}
-
-		// TODO: add devices dynamically (to support USB devices)
-		for _, p := range paths {
-			path := p
-			g.Add(func() error {
-				return s.listenToEvents(path, inputEventChannel)
-			}, func(err error) {
-				if err != nil {
-					fmt.Printf("Error: %v", err)
-				}
-			})
-		}
+		g.Add(func() error {
+			return s.watchInputDevices(ctx)
+		}, func(err error) {
+			if err != nil {
+				fmt.Printf("Error: %v", err)
+			}
+		})
 	}
 	{
 		g.Add(func() error {
@@ -175,7 +164,10 @@ func (s KbdService) listenToEvents(path string, ch chan Event) error {
 	b := make([]byte, 24)
 
 	for {
-		_, _ = f.Read(b)
+		_, err = f.Read(b)
+		if err != nil {
+			return err
+		}
 		event := Event{
 			Sec:  binary.LittleEndian.Uint64(b[0:8]),
 			Usec: binary.LittleEndian.Uint64(b[8:16]),
@@ -190,5 +182,47 @@ func (s KbdService) listenToEvents(path string, ch chan Event) error {
 		go func() {
 			ch <- event
 		}()
+	}
+}
+
+func (s *KbdService) watchInputDevices(ctx context.Context) error {
+	tick := time.Tick(1 * time.Second)
+
+	// this is static
+	micePath := "/dev/input/mice"
+
+	kbdPattern := regexp.MustCompile(".*kbd.*")
+
+	activeListeners := map[string]bool{}
+
+	for {
+		select {
+		case <-ctx.Done():
+			return nil
+		case <-tick:
+			paths := []string{
+				micePath,
+			}
+			matches := util.FindFilesMatching("/dev/input/by-id", kbdPattern)
+			for _, match := range matches {
+				paths = append(paths, match)
+			}
+
+			for _, p := range paths {
+				path, _ := filepath.EvalSymlinks(p)
+
+				v, ok := activeListeners[path]
+				if ok && v == true {
+					continue
+				}
+
+				go func() {
+					fmt.Printf("Listening to: %s\n", path)
+					activeListeners[path] = true
+					defer func() { activeListeners[path] = false }()
+					s.listenToEvents(path, inputEventChannel)
+				}()
+			}
+		}
 	}
 }
