@@ -1,7 +1,1 @@
-events:
-  onUserIdle:
-    effect: DimThenOff
-    config:
-      timeToDim: 1s
-      timeToOff: 2s
-  onUserActive:
+idleTimeout: 3s

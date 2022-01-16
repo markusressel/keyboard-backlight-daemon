@@ -28,15 +28,17 @@ var (
 )
 
 type KbdService struct {
-	idleTimeout   time.Duration
-	light         light.Light
-	userIdle      bool
-	userIdleTimer *time.Timer
+	initialized      bool
+	idleTimeout      time.Duration
+	light            light.Light
+	targetBrightness int
+	userIdle         bool
+	userIdleTimer    *time.Timer
 }
 
-func NewKbdService(c config.Configuration) *KbdService {
+func NewKbdService(c config.Configuration, l light.Light) *KbdService {
 	return &KbdService{
-		light:       light.NewLight(),
+		light:       l,
 		idleTimeout: c.IdleTimeout,
 		userIdle:    true,
 	}
@@ -44,15 +46,27 @@ func NewKbdService(c config.Configuration) *KbdService {
 
 func (s *KbdService) Run() {
 
+	b, err := s.light.GetBrightness()
+	if err != nil {
+		panic(err)
+	}
+	s.targetBrightness = b
+
 	ctx, cancel := context.WithCancel(context.Background())
 
 	var g run.Group
 	{
+		// TODO: find these paths dynamically
 		paths := []string{
 			"/dev/input/event2",
 			"/dev/input/event3",
+
+			"/dev/input/mice",
+			"/dev/input/event5",
+			"/dev/input/event6",
 		}
 
+		// TODO: add devices dynamically (to support USB devices)
 		for _, p := range paths {
 			path := p
 			g.Add(func() error {
@@ -106,6 +120,8 @@ func (s KbdService) controlLoop(ctx context.Context) error {
 	for {
 		select {
 		case <-ctx.Done():
+			// (try to) restore brightness on exit
+			s.light.SetBrightness(s.targetBrightness)
 			return nil
 		case isActive := <-userIdleChannel:
 			s.updateState(isActive)
@@ -123,17 +139,26 @@ func (s KbdService) onUserInteraction() {
 }
 
 func (s *KbdService) updateState(userIdle bool) {
-	if s.userIdle == userIdle {
+	if s.initialized == false {
+		s.initialized = true
+	} else if s.userIdle == userIdle {
 		return
-	} else {
-		s.userIdle = userIdle
-		fmt.Printf("UserIdle: %t\n", userIdle)
 	}
 
+	s.userIdle = userIdle
+	fmt.Printf("UserIdle: %t\n", userIdle)
+
 	if userIdle {
-		s.light.SetBrightness(100)
-	} else {
+		// update the target brightness to the
+		// last brightness before detecting "idle" state
+		b, err := s.light.GetBrightness()
+		if err == nil && b != s.targetBrightness {
+			fmt.Printf("Updating target brightness: %d -> %d", s.targetBrightness, b)
+			s.targetBrightness = b
+		}
 		s.light.SetBrightness(0)
+	} else {
+		s.light.SetBrightness(s.targetBrightness)
 	}
 }
 

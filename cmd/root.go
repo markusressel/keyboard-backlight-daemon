@@ -3,6 +3,7 @@ package cmd
 import (
 	"fmt"
 	"github.com/markusressel/keyboard-backlight-daemon/internal/config"
+	"github.com/markusressel/keyboard-backlight-daemon/internal/light"
 	"github.com/markusressel/keyboard-backlight-daemon/internal/service"
 	"github.com/pterm/pterm"
 	"github.com/spf13/cobra"
@@ -27,7 +28,8 @@ var rootCmd = &cobra.Command{
 
 		config.ReadConfigFile()
 
-		s := service.NewKbdService(config.CurrentConfig)
+		l := light.NewLight("/sys/class/leds/asus::kbd_backlight")
+		s := service.NewKbdService(config.CurrentConfig, l)
 		s.Run()
 
 		//internal.RunDaemon()
