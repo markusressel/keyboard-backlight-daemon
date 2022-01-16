@@ -1,0 +1,11 @@
+[Unit]
+Description=keyboard-backlight-daemon
+
+[Service]
+LimitNOFILE=8192
+ExecStart=/usr/bin/kbd -c /etc/kbd/kbd.yaml --no-style
+Restart=always
+RestartSec=1s
+
+[Install]
+WantedBy=multi-user.target
