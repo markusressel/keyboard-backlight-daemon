@@ -186,15 +186,13 @@ func (s KbdService) listenToEvents(path string, ch chan Event) error {
 }
 
 func (s *KbdService) watchInputDevices(ctx context.Context) error {
-	tick := time.Tick(1 * time.Second)
-
 	// this is static
 	micePath := "/dev/input/mice"
-
 	kbdPattern := regexp.MustCompile(".*kbd.*")
 
 	activeListeners := map[string]bool{}
 
+	tick := time.Tick(1 * time.Second)
 	for {
 		select {
 		case <-ctx.Done():
