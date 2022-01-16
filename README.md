@@ -17,7 +17,7 @@
 
 # Features
 
-* [x] Light up keyboard backlight based on user interaction
+* [x] Light up keyboard backlight based on user interaction (keyboard, mouse, touchpad)
 * [x] No system dependencies
 
 # Tested on
