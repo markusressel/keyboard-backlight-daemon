@@ -88,6 +88,12 @@ journalctl -u keyboard-backlight-daemon -f
 
 See [go.mod](go.mod)
 
+# Similar Projects
+
+* [alexmohr/keyboard-backlight](https://github.com/alexmohr/keyboard-backlight)
+* [ruben2020/kbd_backlight_ctrl](https://github.com/ruben2020/kbd_backlight_ctrl)
+* [moson-mo/smartlight](https://github.com/moson-mo/smartlight)
+
 # License
 
 ```
