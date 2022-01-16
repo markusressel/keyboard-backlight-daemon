@@ -17,7 +17,7 @@ type Configuration struct {
 var CurrentConfig Configuration
 
 func InitConfig(cfgFile string) {
-	viper.SetConfigName("kbd")
+	viper.SetConfigName("keyboard-backlight-daemon")
 
 	if cfgFile != "" {
 		// Use config file from the flag.
@@ -32,7 +32,7 @@ func InitConfig(cfgFile string) {
 
 		viper.AddConfigPath(".")
 		viper.AddConfigPath(path.Join(home, ".config"))
-		viper.AddConfigPath("/etc/kbd/")
+		viper.AddConfigPath("/etc/keyboard-backlight-daemon/")
 	}
 
 	viper.AutomaticEnv() // read in environment variables that match

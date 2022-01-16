@@ -29,7 +29,7 @@ If applicable, add screenshots to help explain your problem.
 - Distro: [e.g. Arch Linux]
 - `uname -a`:
 - `sensors -v`:
-- `kbd version`:
+- `keyboard-backlight-daemon version`:
 
 **Additional context**
 Add any other context about the problem here.

@@ -60,10 +60,10 @@ func setupUi() {
 // Print a large text with the LetterStyle from the standard theme.
 func printHeader() {
 	err := pterm.DefaultBigText.WithLetters(
-		pterm.NewLettersFromStringWithStyle("kbd", pterm.NewStyle(pterm.FgWhite)),
+		pterm.NewLettersFromStringWithStyle("keyboard-backlight-daemon", pterm.NewStyle(pterm.FgWhite)),
 	).Render()
 	if err != nil {
-		fmt.Println("kbd")
+		fmt.Println("keyboard-backlight-daemon")
 	}
 }
 
@@ -74,7 +74,7 @@ func Execute() {
 		config.InitConfig(cfgFile)
 	})
 
-	rootCmd.PersistentFlags().StringVarP(&cfgFile, "config", "c", "", "config file (default is /etc/kbd/kbd.yaml)")
+	rootCmd.PersistentFlags().StringVarP(&cfgFile, "config", "c", "", "config file (default is /etc/keyboard-backlight-daemon/keyboard-backlight-daemon.yaml)")
 	rootCmd.PersistentFlags().BoolVarP(&noColor, "no-color", "", false, "Disable all terminal output coloration")
 	rootCmd.PersistentFlags().BoolVarP(&noStyle, "no-style", "", false, "Disable all terminal output styling")
 	rootCmd.PersistentFlags().BoolVarP(&verbose, "verbose", "v", false, "More verbose output")

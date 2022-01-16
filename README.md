@@ -1,5 +1,5 @@
 <h1 align="center">
-  <img src="screenshots/kbd_icon.svg" width="144" height="144" alt="kbd icon">
+  <img src="screenshots/kbd_icon.svg" width="144" height="144" alt="keyboard-backlight-daemon icon">
   <br>
   keyboard-backlight-daemon
   <br>
@@ -23,6 +23,52 @@
 # Tested on
 
 * [x] Asus ROG Zephyrus M16 (2021)
+
+# How to use
+
+## Installation
+
+### ![](https://img.shields.io/badge/Arch_Linux-1793D1?logo=arch-linux&logoColor=white)
+
+```shell
+yay -S keyboard-backlight-daemon-git
+```
+
+### Manual
+
+Download the latest release from GitHub:
+
+```shell
+curl -L -o keyboard-backlight-daemon https://github.com/markusressel/keyboard-backlight-daemon/releases/latest/download/keyboard-backlight-daemon-linux-amd64
+chmod +x keyboard-backlight-daemon
+sudo cp ./keyboard-backlight-daemon /usr/bin/keyboard-backlight-daemon
+keyboard-backlight-daemon
+```
+
+Or compile yourself:
+
+```shell
+git clone https://github.com/markusressel/keyboard-backlight-daemon.git
+cd keyboard-backlight-daemon
+make build
+sudo cp ./bin/keyboard-backlight-daemon /usr/bin/keyboard-backlight-daemon
+sudo chmod ug+x /usr/bin/keyboard-backlight-daemon
+keyboard-backlight-daemon
+```
+
+## Configuration
+
+If you want to change the default behaviour of keyboard-backlight-daemon you can create a YAML configuration file in **
+one** of the following locations:
+
+* `/etc/keyboard-backlight-daemon/keyboard-backlight-daemon.yaml` (recommended)
+* `~/.config/keyboard-backlight-daemon.yaml`
+* `./keyboard-backlight-daemon.yaml`
+
+```shell
+sudo mkdir /etc/keyboard-backlight-daemon
+sudo nano /etc/keyboard-backlight-daemon/keyboard-backlight-daemon.yaml
+```
 
 # Dependencies
 

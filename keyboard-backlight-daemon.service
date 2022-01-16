@@ -3,7 +3,7 @@ Description=keyboard-backlight-daemon
 
 [Service]
 LimitNOFILE=8192
-ExecStart=/usr/bin/kbd -c /etc/kbd/kbd.yaml --no-style
+ExecStart=/usr/bin/keyboard-backlight-daemon -c /etc/keyboard-backlight-daemon/keyboard-backlight-daemon.yaml --no-style
 Restart=always
 RestartSec=1s
 

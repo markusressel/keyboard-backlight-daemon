@@ -1,4 +1,4 @@
-BINARY_NAME=kbd
+BINARY_NAME=keyboard-backlight-daemon
 OUTPUT_DIR=bin/
 
 build:
