@@ -42,7 +42,7 @@ Download the latest release from GitHub:
 curl -L -o keyboard-backlight-daemon https://github.com/markusressel/keyboard-backlight-daemon/releases/latest/download/keyboard-backlight-daemon-linux-amd64
 chmod +x keyboard-backlight-daemon
 sudo cp ./keyboard-backlight-daemon /usr/bin/keyboard-backlight-daemon
-keyboard-backlight-daemon
+sudo keyboard-backlight-daemon
 ```
 
 Or compile yourself:
@@ -53,7 +53,7 @@ cd keyboard-backlight-daemon
 make build
 sudo cp ./bin/keyboard-backlight-daemon /usr/bin/keyboard-backlight-daemon
 sudo chmod ug+x /usr/bin/keyboard-backlight-daemon
-keyboard-backlight-daemon
+sudo keyboard-backlight-daemon
 ```
 
 ## Configuration
@@ -68,6 +68,20 @@ one** of the following locations:
 ```shell
 sudo mkdir /etc/keyboard-backlight-daemon
 sudo nano /etc/keyboard-backlight-daemon/keyboard-backlight-daemon.yaml
+```
+
+## Run
+
+### Systemd Service
+
+Use the [systemd unit file](./keyboard-backlight-daemon.service) in this repository. To enable it simply run:
+
+```shell
+sudo cp ./keyboard-backlight-daemon.service /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable --now keyboard-backlight-daemon
+# follow logs
+journalctl -u keyboard-backlight-daemon -f
 ```
 
 # Dependencies
