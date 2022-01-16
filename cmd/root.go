@@ -28,11 +28,23 @@ var rootCmd = &cobra.Command{
 
 		config.ReadConfigFile()
 
-		l := light.NewLight("/sys/class/leds/asus::kbd_backlight")
-		s := service.NewKbdService(config.CurrentConfig, l)
-		s.Run()
+		var lightPath string
+		if config.CurrentConfig.BacklightPath != nil {
+			lightPath = *config.CurrentConfig.BacklightPath
+		} else {
+			p := light.DetectKeyboardBacklight()
+			if p == nil {
+				panic("No keyboard backlight found")
+			} else {
+				lightPath = *p
+				fmt.Printf("Detected keyboard backlight: %s\n", lightPath)
+			}
+		}
+		l := light.NewLight(lightPath)
 
-		//internal.RunDaemon()
+		s := service.NewKbdService(config.CurrentConfig, l)
+
+		s.Run()
 	},
 }
 

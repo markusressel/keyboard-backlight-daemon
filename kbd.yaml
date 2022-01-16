@@ -1,1 +1,5 @@
-idleTimeout: 3s
+# (optional) Path to the keyboard backlight
+backlightPath: "/sys/class/leds/asus::kbd_backlight"
+
+# Time to wait before considering a user "idle"
+idleTimeout: 6s

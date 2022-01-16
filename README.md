@@ -1,11 +1,11 @@
 <h1 align="center">
-  <img src="screenshots/kbd_icon.svg" width="144" height="144" alt="fan2go icon">
+  <img src="screenshots/kbd_icon.svg" width="144" height="144" alt="kbd icon">
   <br>
   keyboard-backlight-daemon
   <br>
 </h1>
 
-<h4 align="center">A daemon to control the fans of a computer.</h4>
+<h4 align="center">A daemon to make your keyboard backlight smart.</h4>
 
 <div align="center">
 
@@ -17,8 +17,7 @@
 
 # Features
 
-* [x] Automatic keyboard backlight based user interaction
-* [x] Dynamically adjustable target brightness
+* [x] Light up keyboard backlight based on user interaction
 * [x] No system dependencies
 
 # Tested on

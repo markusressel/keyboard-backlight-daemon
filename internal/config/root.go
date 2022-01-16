@@ -10,7 +10,8 @@ import (
 )
 
 type Configuration struct {
-	IdleTimeout time.Duration
+	BacklightPath *string
+	IdleTimeout   time.Duration
 }
 
 var CurrentConfig Configuration
@@ -46,7 +47,7 @@ func setDefaultValues() {
 func ReadConfigFile() {
 	if err := viper.ReadInConfig(); err == nil {
 		// this is only populated _after_ ReadInConfig()
-		fmt.Printf("Using configuration file at: %s", viper.ConfigFileUsed())
+		fmt.Printf("Using configuration file at: %s\n", viper.ConfigFileUsed())
 		LoadConfig()
 	}
 

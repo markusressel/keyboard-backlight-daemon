@@ -95,7 +95,7 @@ func (s *KbdService) Run() {
 			for {
 				s := <-sig
 				if s != nil {
-					fmt.Printf("Received %s signal, exiting...", s)
+					fmt.Printf("Received '%s' signal, exiting...", s)
 					os.Exit(0)
 				}
 			}
@@ -153,7 +153,7 @@ func (s *KbdService) updateState(userIdle bool) {
 		// last brightness before detecting "idle" state
 		b, err := s.light.GetBrightness()
 		if err == nil && b != s.targetBrightness {
-			fmt.Printf("Updating target brightness: %d -> %d", s.targetBrightness, b)
+			fmt.Printf("Updating target brightness: %d -> %d\n", s.targetBrightness, b)
 			s.targetBrightness = b
 		}
 		s.light.SetBrightness(0)
