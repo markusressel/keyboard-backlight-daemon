@@ -146,7 +146,8 @@ func (s *KbdService) updateState(userIdle bool) {
 	}
 
 	s.userIdle = userIdle
-	fmt.Printf("UserIdle: %t\n", userIdle)
+	// TODO: verbose
+	//fmt.Printf("UserIdle: %t\n", userIdle)
 
 	if userIdle {
 		// update the target brightness to the
