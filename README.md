@@ -1,5 +1,4 @@
 <h1 align="center">
-  <img src="screenshots/kbd_icon.svg" width="144" height="144" alt="keyboard-backlight-daemon icon">
   <br>
   keyboard-backlight-daemon
   <br>
