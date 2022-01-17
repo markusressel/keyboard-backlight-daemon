@@ -5,7 +5,7 @@ go 1.17
 require (
 	github.com/pterm/pterm v0.12.33
 	github.com/spf13/cobra v1.3.0
-	github.com/spf13/viper v1.10.0
+	github.com/spf13/viper v1.10.1
 )
 
 require (
