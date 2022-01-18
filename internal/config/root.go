@@ -10,8 +10,9 @@ import (
 )
 
 type Configuration struct {
-	BacklightPath *string
-	IdleTimeout   time.Duration
+	BacklightPath     *string
+	InputEventDevices []string
+	IdleTimeout       time.Duration
 }
 
 var CurrentConfig Configuration

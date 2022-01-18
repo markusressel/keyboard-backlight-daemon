@@ -26,8 +26,7 @@ type Event struct {
 
 var (
 	inputEventChannel = make(chan Event, 1)
-
-	userIdleChannel = make(chan bool)
+	userIdleChannel   = make(chan bool)
 )
 
 type KbdService struct {
@@ -186,21 +185,31 @@ func (s KbdService) listenToEvents(path string, ch chan Event) error {
 }
 
 func (s *KbdService) watchInputDevices(ctx context.Context) error {
-	// this is static
+
+	staticPaths := []string{}
+	// from configuration
+	for _, path := range config.CurrentConfig.InputEventDevices {
+		staticPaths = append(staticPaths, path)
+	}
+
 	micePath := "/dev/input/mice"
+	staticPaths = append(staticPaths, micePath)
+
 	kbdPattern := regexp.MustCompile(".*kbd.*")
 
+	// keeps track of active listeners
 	activeListeners := map[string]bool{}
-
 	tick := time.Tick(1 * time.Second)
 	for {
 		select {
 		case <-ctx.Done():
 			return nil
 		case <-tick:
-			paths := []string{
-				micePath,
+			paths := []string{}
+			for _, path := range staticPaths {
+				paths = append(paths, path)
 			}
+
 			matches := util.FindFilesMatching("/dev/input/by-id", kbdPattern)
 			for _, match := range matches {
 				paths = append(paths, match)
@@ -214,9 +223,10 @@ func (s *KbdService) watchInputDevices(ctx context.Context) error {
 					continue
 				}
 
+				fmt.Printf("Listening to: %s\n", path)
+				activeListeners[path] = true
+
 				go func() {
-					fmt.Printf("Listening to: %s\n", path)
-					activeListeners[path] = true
 					defer func() { activeListeners[path] = false }()
 					s.listenToEvents(path, inputEventChannel)
 				}()

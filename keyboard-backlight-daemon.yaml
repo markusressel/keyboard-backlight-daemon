@@ -1,5 +1,11 @@
 # (optional) Path to the keyboard backlight
 backlightPath: "/sys/class/leds/asus::kbd_backlight"
 
+# (optional) Override of input event devices to use as "activity" trigger
+inputEventDevices:
+  - "/dev/input/mice"
+  - "/dev/input/by-id/usb-ASUSTeK_Computer_Inc._N-KEY_Device-if02-event-kbd"
+  - "/dev/input/by-id/usb-ASUSTeK_Computer_Inc._N-KEY_Device-event-if00"
+
 # Time to wait before considering a user "idle"
 idleTimeout: 6s
