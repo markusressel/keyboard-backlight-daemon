@@ -36,7 +36,7 @@ func NewLight(path string) Light {
 
 func (f *light) GetBrightness() (percentage int, err error) {
 	rawBrightness, err := util.ReadIntFromFile(f.path + string(os.PathSeparator) + Brightness)
-	mappedToPercentage := int(math.Round(float64(rawBrightness) * 33.33333))
+	mappedToPercentage := int(math.Round(float64(rawBrightness) / float64(f.maxBrightness)))
 	return mappedToPercentage, err
 }
 
