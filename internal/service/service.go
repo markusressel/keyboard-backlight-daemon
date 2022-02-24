@@ -30,19 +30,24 @@ var (
 )
 
 type KbdService struct {
-	initialized      bool
-	idleTimeout      time.Duration
-	light            light.Light
+	initialized bool
+	light       light.Light
+
 	targetBrightness int
-	userIdle         bool
-	userIdleTimer    *time.Timer
+
+	userIdle      bool
+	userIdleTimer *time.Timer
+	idleTimeout   time.Duration
+
+	currentlyWatchedInputDevices map[string]bool
 }
 
 func NewKbdService(c config.Configuration, l light.Light) *KbdService {
 	return &KbdService{
-		light:       l,
-		idleTimeout: c.IdleTimeout,
-		userIdle:    true,
+		light:                        l,
+		idleTimeout:                  c.IdleTimeout,
+		userIdle:                     true,
+		currentlyWatchedInputDevices: map[string]bool{},
 	}
 }
 
@@ -195,42 +200,49 @@ func (s *KbdService) watchInputDevices(ctx context.Context) error {
 	micePath := "/dev/input/mice"
 	staticPaths = append(staticPaths, micePath)
 
-	kbdPattern := regexp.MustCompile(".*kbd.*")
-
-	// keeps track of active listeners
-	activeListeners := map[string]bool{}
-	tick := time.Tick(1 * time.Second)
+	s.scanInputDevices(staticPaths)
+	tick := time.Tick(10 * time.Second)
 	for {
 		select {
 		case <-ctx.Done():
 			return nil
 		case <-tick:
-			paths := []string{}
-			for _, path := range staticPaths {
-				paths = append(paths, path)
-			}
-
-			matches := util.FindFilesMatching("/dev/input/by-id", kbdPattern)
-			for _, match := range matches {
-				paths = append(paths, match)
-			}
-
-			for _, p := range paths {
-				path, _ := filepath.EvalSymlinks(p)
-
-				v, ok := activeListeners[path]
-				if ok && v == true {
-					continue
-				}
-
-				fmt.Printf("Listening to: %s\n", path)
-				activeListeners[path] = true
-
-				go func() {
-					defer func() { activeListeners[path] = false }()
-					s.listenToEvents(path, inputEventChannel)
-				}()
-			}
+			s.scanInputDevices(staticPaths)
 		}
+	}
+}
+
+var kbdPattern = regexp.MustCompile(".*kbd.*")
+
+func (s *KbdService) scanInputDevices(staticPaths []string) {
+	paths := []string{}
+	for _, path := range staticPaths {
+		paths = append(paths, path)
+	}
+
+	matches := util.FindFilesMatching("/dev/input/by-id", kbdPattern)
+	for _, match := range matches {
+		paths = append(paths, match)
+	}
+
+	for _, p := range paths {
+		path, err := filepath.EvalSymlinks(p)
+		if err != nil {
+			fmt.Printf("%v\n", err)
+			continue
+		}
+
+		v, ok := s.currentlyWatchedInputDevices[path]
+		if ok && v == true {
+			continue
+		}
+
+		fmt.Printf("Listening to: %s\n", path)
+		s.currentlyWatchedInputDevices[path] = true
+
+		go func() {
+			defer func() { s.currentlyWatchedInputDevices[path] = false }()
+			s.listenToEvents(path, inputEventChannel)
+		}()
 	}
 }

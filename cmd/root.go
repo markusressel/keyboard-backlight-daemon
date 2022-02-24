@@ -40,10 +40,9 @@ var rootCmd = &cobra.Command{
 				fmt.Printf("Detected keyboard backlight: %s\n", lightPath)
 			}
 		}
-		l := light.NewLight(lightPath)
-
+		//l := light.NewLight(lightPath)
+		l := light.NewAuroraLight()
 		s := service.NewKbdService(config.CurrentConfig, l)
-
 		s.Run()
 	},
 }

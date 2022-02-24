@@ -14,6 +14,8 @@ const (
 type Light interface {
 	SetBrightness(percentage int) error
 	GetBrightness() (percentage int, err error)
+
+	SetColor(a uint8, r uint8, g uint8, b uint8) error
 }
 
 type light struct {
@@ -43,4 +45,10 @@ func (f *light) GetBrightness() (percentage int, err error) {
 func (f *light) SetBrightness(percentage int) (err error) {
 	mappedToRange := int(math.Round(float64(percentage) * (float64(f.maxBrightness) / 100)))
 	return util.WriteIntToFile(mappedToRange, f.path+string(os.PathSeparator)+Brightness)
+}
+
+func (f *light) SetColor(a uint8, r uint8, g uint8, b uint8) (err error) {
+	//mappedToRange := int(math.Round(float64(percentage) * (float64(f.maxBrightness) / 100)))
+	//return util.WriteIntToFile(mappedToRange, f.path+string(os.PathSeparator)+Brightness)
+	return nil
 }
