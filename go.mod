@@ -3,14 +3,18 @@ module github.com/markusressel/keyboard-backlight-daemon
 go 1.17
 
 require (
-	github.com/pterm/pterm v0.12.41
+	github.com/pterm/pterm v0.12.45
 	github.com/spf13/cobra v1.4.0
 	github.com/spf13/viper v1.11.0
 )
 
 require (
+	atomicgo.dev/cursor v0.1.1 // indirect
+	atomicgo.dev/keyboard v0.2.8 // indirect
+	github.com/containerd/console v1.0.3 // indirect
 	github.com/fsnotify/fsnotify v1.5.1 // indirect
 	github.com/hashicorp/hcl v1.0.0 // indirect
+	github.com/lithammer/fuzzysearch v1.1.5 // indirect
 	github.com/magiconair/properties v1.8.6 // indirect
 	github.com/mitchellh/mapstructure v1.4.3 // indirect
 	github.com/pelletier/go-toml v1.9.4 // indirect
@@ -26,7 +30,6 @@ require (
 )
 
 require (
-	github.com/atomicgo/cursor v0.0.1 // indirect
 	github.com/gookit/color v1.5.0 // indirect
 	github.com/inconshreveable/mousetrap v1.0.0 // indirect
 	github.com/mattn/go-runewidth v0.0.13 // indirect
