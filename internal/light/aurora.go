@@ -12,7 +12,6 @@ type auroraLight struct {
 }
 
 func NewAuroraLight() Light {
-
 	device := findUsbDevice()
 
 	return &auroraLight{

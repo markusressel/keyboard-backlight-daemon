@@ -1,8 +1,8 @@
 package light
 
 import (
-	"io/ioutil"
 	"log"
+	"os"
 	"path"
 	"path/filepath"
 	"regexp"
@@ -13,7 +13,7 @@ const (
 )
 
 func DetectKeyboardBacklight() *string {
-	files, err := ioutil.ReadDir(ledsPath)
+	files, err := os.ReadDir(ledsPath)
 	if err != nil {
 		log.Fatal(err)
 	}

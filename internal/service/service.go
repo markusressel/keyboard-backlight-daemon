@@ -9,6 +9,7 @@ import (
 	"github.com/markusressel/keyboard-backlight-daemon/internal/light"
 	"github.com/markusressel/keyboard-backlight-daemon/internal/util"
 	"github.com/oklog/run"
+	"math"
 	"os"
 	"os/signal"
 	"path/filepath"
@@ -33,13 +34,14 @@ type KbdService struct {
 	initialized bool
 	light       light.Light
 
-	targetBrightness int
+	lastNonIdleBrightness int
 
 	userIdle      bool
 	userIdleTimer *time.Timer
 	idleTimeout   time.Duration
 
 	currentlyWatchedInputDevices map[string]bool
+	animationTarget              *AnimationTarget
 }
 
 func NewKbdService(c config.Configuration, l light.Light) *KbdService {
@@ -57,7 +59,7 @@ func (s *KbdService) Run() {
 	if err != nil {
 		panic(err)
 	}
-	s.targetBrightness = b
+	s.lastNonIdleBrightness = b
 
 	ctx, cancel := context.WithCancel(context.Background())
 
@@ -65,6 +67,56 @@ func (s *KbdService) Run() {
 	{
 		g.Add(func() error {
 			return s.watchInputDevices(ctx)
+		}, func(err error) {
+			if err != nil {
+				fmt.Printf("Error: %v", err)
+			}
+		})
+	}
+	{
+		g.Add(func() error {
+			totalAnimationTime := 3 * time.Second
+
+			s.animationTarget = &AnimationTarget{
+				when: time.Now(),
+				from: s.lastNonIdleBrightness,
+				to:   s.lastNonIdleBrightness,
+			}
+
+			frameTicker := time.Tick(64 * time.Millisecond)
+			lastSetPercentage := s.lastNonIdleBrightness
+
+			durationSinceStart := 0 * time.Second
+
+			for {
+				select {
+				case <-ctx.Done():
+					return nil
+				case <-frameTicker:
+					if s.animationTarget.to == lastSetPercentage {
+						continue
+					}
+
+					durationSinceStart = time.Now().Sub(s.animationTarget.when)
+					progress := float64(durationSinceStart.Milliseconds()) / float64(totalAnimationTime.Milliseconds())
+					diff := s.animationTarget.to - s.animationTarget.from
+					animatedValue := s.animationTarget.from + int(float64(diff)*progress)
+					targetValue := int(math.Min(float64(animatedValue), 100))
+					targetValue = int(math.Max(float64(targetValue), 0))
+
+					if targetValue == lastSetPercentage {
+						// nothing to do
+						continue
+					}
+
+					fmt.Printf("Setting brightness from %d to %d -> %d\n", lastSetPercentage, targetValue, s.animationTarget.to)
+					err = s.light.SetBrightness(targetValue)
+					if err != nil {
+						fmt.Printf("%v", err)
+					}
+					lastSetPercentage = targetValue
+				}
+			}
 		}, func(err error) {
 			if err != nil {
 				fmt.Printf("Error: %v", err)
@@ -105,7 +157,7 @@ func (s *KbdService) Run() {
 
 }
 
-func (s KbdService) controlLoop(ctx context.Context) error {
+func (s *KbdService) controlLoop(ctx context.Context) error {
 	s.userIdleTimer = time.AfterFunc(s.idleTimeout, func() {
 		userIdleChannel <- true
 	})
@@ -114,7 +166,7 @@ func (s KbdService) controlLoop(ctx context.Context) error {
 		select {
 		case <-ctx.Done():
 			// (try to) restore brightness on exit
-			s.light.SetBrightness(s.targetBrightness)
+			s.light.SetBrightness(s.lastNonIdleBrightness)
 			return nil
 		case isActive := <-userIdleChannel:
 			s.updateState(isActive)
@@ -124,7 +176,7 @@ func (s KbdService) controlLoop(ctx context.Context) error {
 	}
 }
 
-func (s KbdService) onUserInteraction() {
+func (s *KbdService) onUserInteraction() {
 	s.userIdleTimer.Reset(s.idleTimeout)
 	go func() {
 		userIdleChannel <- false
@@ -142,23 +194,43 @@ func (s *KbdService) updateState(userIdle bool) {
 	// TODO: verbose
 	//fmt.Printf("UserIdle: %t\n", userIdle)
 
+	b, err := s.light.GetBrightness()
+	if err != nil {
+		return
+	}
+
 	if userIdle {
 		// update the target brightness to the
 		// last brightness before detecting "idle" state
-		b, err := s.light.GetBrightness()
-		if err == nil && b != s.targetBrightness {
-			fmt.Printf("Updating target brightness: %d -> %d\n", s.targetBrightness, b)
-			s.targetBrightness = b
+		if err == nil && b != s.lastNonIdleBrightness {
+			fmt.Printf("Updating target brightness: %d -> %d\n", s.lastNonIdleBrightness, b)
+			s.lastNonIdleBrightness = b
 		}
-		s.light.SetBrightness(0)
+		s.animateBrightness(b, 0)
 	} else {
-		s.light.SetBrightness(s.targetBrightness)
+		s.animateBrightness(b, s.lastNonIdleBrightness)
+	}
+}
+
+type AnimationTarget struct {
+	when time.Time
+	from int
+	to   int
+}
+
+// animateBrightness animates the brightness of the keyboard backlight to the given
+// currentTargetBrightness
+func (s *KbdService) animateBrightness(from int, percentage int) {
+	s.animationTarget = &AnimationTarget{
+		when: time.Now(),
+		from: from,
+		to:   percentage,
 	}
 }
 
 // listenToEvents listens to incoming events on the given file
-//    and notifies the given channel ch for each one.
-func (s KbdService) listenToEvents(path string, ch chan Event) error {
+// and notifies the given channel ch for each one.
+func (s *KbdService) listenToEvents(path string, ch chan Event) error {
 	f, err := os.Open(path)
 	if err != nil {
 		panic(err)

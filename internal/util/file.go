@@ -3,7 +3,6 @@ package util
 import (
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -12,7 +11,7 @@ import (
 )
 
 func ReadIntFromFile(path string) (value int, err error) {
-	data, err := ioutil.ReadFile(path)
+	data, err := os.ReadFile(path)
 	if err != nil {
 		return -1, err
 	}
@@ -32,7 +31,7 @@ func WriteIntToFile(value int, path string) error {
 		path = evaluatedPath
 	}
 	valueAsString := fmt.Sprintf("%d", value)
-	err = ioutil.WriteFile(path, []byte(valueAsString), 644)
+	err = os.WriteFile(path, []byte(valueAsString), 644)
 	return err
 }
 
