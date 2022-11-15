@@ -1,6 +1,6 @@
 module github.com/markusressel/keyboard-backlight-daemon
 
-go 1.17
+go 1.19
 
 require (
 	github.com/pterm/pterm v0.12.41
