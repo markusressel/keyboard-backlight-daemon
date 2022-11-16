@@ -75,7 +75,8 @@ func (s *KbdService) Run() {
 	}
 	{
 		g.Add(func() error {
-			totalAnimationTime := 3 * time.Second
+			totalAnimationTimeOn := config.CurrentConfig.AnimationTimeOn
+			totalAnimationTimeOff := config.CurrentConfig.AnimationTimeOff
 
 			s.animationTarget = &AnimationTarget{
 				when: time.Now(),
@@ -83,7 +84,7 @@ func (s *KbdService) Run() {
 				to:   s.lastNonIdleBrightness,
 			}
 
-			frameTicker := time.Tick(64 * time.Millisecond)
+			frameTicker := time.Tick(100 * time.Millisecond)
 			lastSetPercentage := s.lastNonIdleBrightness
 
 			durationSinceStart := 0 * time.Second
@@ -93,8 +94,13 @@ func (s *KbdService) Run() {
 				case <-ctx.Done():
 					return nil
 				case <-frameTicker:
+					var totalAnimationTime time.Duration
 					if s.animationTarget.to == lastSetPercentage {
 						continue
+					} else if s.animationTarget.to > lastSetPercentage {
+						totalAnimationTime = totalAnimationTimeOn
+					} else {
+						totalAnimationTime = totalAnimationTimeOff
 					}
 
 					durationSinceStart = time.Now().Sub(s.animationTarget.when)

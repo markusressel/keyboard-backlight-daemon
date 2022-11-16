@@ -13,6 +13,8 @@ type Configuration struct {
 	BacklightPath     *string
 	InputEventDevices []string
 	IdleTimeout       time.Duration
+	AnimationTimeOn   time.Duration
+	AnimationTimeOff  time.Duration
 }
 
 var CurrentConfig Configuration
@@ -43,6 +45,8 @@ func InitConfig(cfgFile string) {
 
 func setDefaultValues() {
 	viper.SetDefault("idleTimeout", 6*time.Second)
+	viper.SetDefault("animationTimeOn", 500*time.Millisecond)
+	viper.SetDefault("animationTimeOff", 2*time.Second)
 }
 
 func ReadConfigFile() {

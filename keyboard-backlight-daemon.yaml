@@ -9,3 +9,8 @@ inputEventDevices:
 
 # Time to wait before considering a user "idle"
 idleTimeout: 6s
+
+# Animation duration from off -> on state
+animationTimeOn: 500ms
+# Animation duration from on -> off state
+animationTimeOff: 2s
