@@ -57,8 +57,7 @@ sudo keyboard-backlight-daemon
 
 ## Configuration
 
-If you want to change the default behaviour of keyboard-backlight-daemon you can create a YAML configuration file in **
-one** of the following locations:
+If you want to change the default behaviour of keyboard-backlight-daemon you can create a YAML configuration file in **one** of the following locations:
 
 * `/etc/keyboard-backlight-daemon/keyboard-backlight-daemon.yaml` (recommended)
 * `~/.config/keyboard-backlight-daemon.yaml`
