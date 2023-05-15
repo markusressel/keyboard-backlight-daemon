@@ -3,7 +3,7 @@ module github.com/markusressel/keyboard-backlight-daemon
 go 1.19
 
 require (
-	github.com/pterm/pterm v0.12.60
+	github.com/pterm/pterm v0.12.61
 	github.com/spf13/cobra v1.7.0
 	github.com/spf13/viper v1.15.0
 )
