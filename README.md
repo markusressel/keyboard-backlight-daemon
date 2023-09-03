@@ -30,7 +30,8 @@
 ### ![](https://img.shields.io/badge/Arch_Linux-1793D1?logo=arch-linux&logoColor=white)
 
 ```shell
-yay -S keyboard-backlight-daemon-git
+cd contrib
+makepkg -sic
 ```
 
 ### Manual
