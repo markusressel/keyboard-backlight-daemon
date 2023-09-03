@@ -1,0 +1,31 @@
+pkgname=keyboard-backlight-daemon-git
+_pkgname=${pkgname%-git}
+pkgver=r87.19985fc
+pkgrel=1
+pkgdesc='A daemon to make your keyboard backlight smart'
+arch=('any')
+url="https://github.com/markusressel/$_pkgname"
+license=('AGPL3')
+depends=()
+makedepends=('git' 'go')
+source=("$_pkgname::git+$url")
+md5sums=('SKIP')
+
+pkgver() {
+  cd "$_pkgname"
+  printf "r%s.%s" "$(git rev-list --count HEAD)" "$(git rev-parse --short=7 HEAD)"
+}
+
+build() {
+  cd "$srcdir/$_pkgname"
+  make build
+}
+
+package() {
+  mkdir -p "$pkgdir/usr/bin"
+  mkdir -p "$pkgdir/usr/lib/systemd/system/"
+  mkdir -p "$pkgdir/etc/keyboard-backlight-daemon/"
+  install -D -m755 "$srcdir/$_pkgname/bin/keyboard-backlight-daemon" "$pkgdir/usr/bin/keyboard-backlight-daemon"
+  install -D -m644 "$srcdir/$_pkgname/keyboard-backlight-daemon.service" "$pkgdir/usr/lib/systemd/system/keyboard-backlight-daemon.service"
+  install -D -m644 "$srcdir/$_pkgname/keyboard-backlight-daemon.yaml" "$pkgdir/etc/keyboard-backlight-daemon/keyboard-backlight-daemon.yaml"
+}
