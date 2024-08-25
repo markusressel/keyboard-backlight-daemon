@@ -30,12 +30,17 @@ var (
 )
 
 type KbdService struct {
-	initialized      bool
-	idleTimeout      time.Duration
-	light            light.Light
-	targetBrightness int
-	userIdle         bool
-	userIdleTimer    *time.Timer
+	initialized bool
+	// idleTimeout specified the time to wait before assuming that the user is idle
+	idleTimeout time.Duration
+	// light the light instance to control through this KbdService instance
+	light light.Light
+	// targetBrightness the currant target brightness
+	targetBrightness float64
+	// userIdle true if the user is currently idling for at least the duration of idleTimeout
+	userIdle bool
+	// idleUserTimer timer instance used to toggle userIdle flag
+	userIdleTimer *time.Timer
 }
 
 func NewKbdService(c config.Configuration, l light.Light) *KbdService {
@@ -51,9 +56,9 @@ func (s *KbdService) Run() {
 
 	b, err := s.light.GetBrightness()
 	if err != nil || b <= 0 {
-		b = 255
+		b = 1
 	}
-	s.targetBrightness = b * 255
+	s.targetBrightness = b
 
 	ctx, cancel := context.WithCancel(context.Background())
 
