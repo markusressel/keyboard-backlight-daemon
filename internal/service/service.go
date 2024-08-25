@@ -40,9 +40,10 @@ type KbdService struct {
 
 func NewKbdService(c config.Configuration, l light.Light) *KbdService {
 	return &KbdService{
-		light:       l,
-		idleTimeout: c.IdleTimeout,
-		userIdle:    true,
+		light:            l,
+		idleTimeout:      c.IdleTimeout,
+		userIdle:         true,
+		targetBrightness: 255,
 	}
 }
 
@@ -52,7 +53,7 @@ func (s *KbdService) Run() {
 	if err != nil || b <= 0 {
 		b = 255
 	}
-	s.targetBrightness = b
+	s.targetBrightness = b * 255
 
 	ctx, cancel := context.WithCancel(context.Background())
 
