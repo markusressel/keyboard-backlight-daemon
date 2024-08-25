@@ -49,8 +49,8 @@ func NewKbdService(c config.Configuration, l light.Light) *KbdService {
 func (s *KbdService) Run() {
 
 	b, err := s.light.GetBrightness()
-	if err != nil {
-		panic(err)
+	if err != nil || b <= 0 {
+		b = 255
 	}
 	s.targetBrightness = b
 
@@ -128,16 +128,14 @@ func (s KbdService) onUserInteraction() {
 
 func (s *KbdService) updateState(userIdle bool) {
 	if s.initialized == false {
-		s.initialized = true
+		defer func() { s.initialized = true }()
 	} else if s.userIdle == userIdle {
 		return
 	}
 
 	s.userIdle = userIdle
-	// TODO: verbose
-	//fmt.Printf("UserIdle: %t\n", userIdle)
 
-	if userIdle {
+	if userIdle && s.initialized {
 		// update the target brightness to the
 		// last brightness before detecting "idle" state
 		b, err := s.light.GetBrightness()
@@ -152,7 +150,8 @@ func (s *KbdService) updateState(userIdle bool) {
 }
 
 // listenToEvents listens to incoming events on the given file
-//    and notifies the given channel ch for each one.
+//
+//	and notifies the given channel ch for each one.
 func (s KbdService) listenToEvents(path string, ch chan Event) error {
 	f, err := os.Open(path)
 	if err != nil {
