@@ -19,9 +19,16 @@ build: clean
 run: build
 	./${OUTPUT_DIR}${BINARY_NAME}
 
-deploy: build
-	mkdir -p ~/.custom/bin/
-	cp ./${OUTPUT_DIR}${BINARY_NAME} ~/.custom/bin/${BINARY_NAME}
+daemon-restart:
+	sudo systemctl restart keyboard-backlight-daemon
+
+daemon-stop:
+	sudo systemctl stop keyboard-backlight-daemon
+
+deploy: daemon-stop
+	mkdir -p /usr/bin/
+	sudo cp ./${OUTPUT_DIR}${BINARY_NAME} /usr/bin/${BINARY_NAME}
+	sudo systemctl restart keyboard-backlight-daemon
 
 clean:
 	go clean
