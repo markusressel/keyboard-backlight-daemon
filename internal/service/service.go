@@ -48,7 +48,7 @@ func NewKbdService(c config.Configuration, l light.Light) *KbdService {
 		light:            l,
 		idleTimeout:      c.IdleTimeout,
 		userIdle:         true,
-		targetBrightness: 255,
+		targetBrightness: 1,
 	}
 }
 
@@ -141,14 +141,20 @@ func (s *KbdService) updateState(userIdle bool) {
 
 	s.userIdle = userIdle
 
-	if userIdle && s.initialized {
+	if userIdle {
 		// update the target brightness to the
 		// last brightness before detecting "idle" state
 		b, err := s.light.GetBrightness()
 		if err == nil && b != s.targetBrightness {
-			fmt.Printf("Updating target brightness: %d -> %d\n", s.targetBrightness, b)
-			s.targetBrightness = b
+			if b <= 0 {
+				// keep old targetBrightness, if new is invisible
+				b = s.targetBrightness
+			} else {
+				fmt.Printf("Updating target brightness: %f -> %f\n", s.targetBrightness, b)
+				s.targetBrightness = b
+			}
 		}
+
 		s.light.SetBrightness(0)
 	} else {
 		s.light.SetBrightness(s.targetBrightness)
