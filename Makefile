@@ -25,7 +25,7 @@ daemon-restart:
 daemon-stop:
 	sudo systemctl stop keyboard-backlight-daemon
 
-deploy: daemon-stop
+deploy: build daemon-stop
 	mkdir -p /usr/bin/
 	sudo cp ./${OUTPUT_DIR}${BINARY_NAME} /usr/bin/${BINARY_NAME}
 	sudo systemctl restart keyboard-backlight-daemon
