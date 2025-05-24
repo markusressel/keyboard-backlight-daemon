@@ -30,6 +30,8 @@
 ### ![](https://img.shields.io/badge/Arch_Linux-1793D1?logo=arch-linux&logoColor=white)
 
 ```shell
+git clone https://github.com/markusressel/keyboard-backlight-daemon.git
+cd keyboard-backlight-daemon
 cd contrib
 makepkg -sic
 ```
