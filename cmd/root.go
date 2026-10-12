@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"errors"
 	"fmt"
 	"github.com/markusressel/keyboard-backlight-daemon/internal/config"
 	"github.com/markusressel/keyboard-backlight-daemon/internal/light"
@@ -26,26 +27,38 @@ var rootCmd = &cobra.Command{
 		setupUi()
 		printHeader()
 
-		config.ReadConfigFile()
+		if err := config.ReadConfigFile(); err != nil {
+			fatal(err)
+		}
 
 		var lightPath string
 		if config.CurrentConfig.BacklightPath != nil {
 			lightPath = *config.CurrentConfig.BacklightPath
 		} else {
-			p := light.DetectKeyboardBacklight()
-			if p == nil {
-				panic("No keyboard backlight found")
-			} else {
-				lightPath = *p
-				fmt.Printf("Detected keyboard backlight: %s\n", lightPath)
+			p, err := light.DetectKeyboardBacklight()
+			if err != nil {
+				fatal(err)
 			}
+			if p == nil {
+				fatal(errors.New("no keyboard backlight found"))
+			}
+			lightPath = *p
+			fmt.Printf("Detected keyboard backlight: %s\n", lightPath)
 		}
-		l := light.NewLight(lightPath)
+		l, err := light.NewLight(lightPath)
+		if err != nil {
+			fatal(err)
+		}
 
 		s := service.NewKbdService(config.CurrentConfig, l)
 
 		s.Run()
 	},
+}
+
+func fatal(err error) {
+	_, _ = fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+	os.Exit(1)
 }
 
 func setupUi() {
@@ -71,7 +84,9 @@ func printHeader() {
 // This is called by main.main(). It only needs to happen once to the rootCmd.
 func Execute() {
 	cobra.OnInitialize(func() {
-		config.InitConfig(cfgFile)
+		if err := config.InitConfig(cfgFile); err != nil {
+			fatal(err)
+		}
 	})
 
 	rootCmd.PersistentFlags().StringVarP(&cfgFile, "config", "c", "", "config file (default is /etc/keyboard-backlight-daemon/keyboard-backlight-daemon.yaml)")
@@ -81,7 +96,6 @@ func Execute() {
 
 	if err := rootCmd.Execute(); err != nil {
 
-		fmt.Printf("Error Executing daemon: %v", err)
-		os.Exit(1)
+		fatal(fmt.Errorf("executing daemon: %w", err))
 	}
 }

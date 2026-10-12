@@ -85,6 +85,13 @@ sudo systemctl enable --now keyboard-backlight-daemon
 journalctl -u keyboard-backlight-daemon -f
 ```
 
+# Known Limitations
+
+When the daemon exits cleanly (e.g. on shutdown or reboot) it turns the keyboard backlight back on.
+If the daemon can't exit cleanly, e.g. on a hard reset, power loss or a crash, the backlight may stay off
+until the daemon is started again on the next boot. This also means it can be off in the bootloader
+or while entering a disk encryption password.
+
 # Dependencies
 
 See [go.mod](go.mod)

@@ -1,10 +1,11 @@
 package config
 
 import (
+	"errors"
 	"fmt"
 	"github.com/mitchellh/go-homedir"
 	"github.com/spf13/viper"
-	"os"
+	"io/fs"
 	"path"
 	"time"
 )
@@ -17,7 +18,7 @@ type Configuration struct {
 
 var CurrentConfig Configuration
 
-func InitConfig(cfgFile string) {
+func InitConfig(cfgFile string) error {
 	viper.SetConfigName("keyboard-backlight-daemon")
 
 	if cfgFile != "" {
@@ -27,8 +28,7 @@ func InitConfig(cfgFile string) {
 		// Find home directory.
 		home, err := homedir.Dir()
 		if err != nil {
-			fmt.Printf("Couldn't detect home directory: %v", err)
-			os.Exit(1)
+			return fmt.Errorf("couldn't detect home directory: %w", err)
 		}
 
 		viper.AddConfigPath(".")
@@ -39,32 +39,43 @@ func InitConfig(cfgFile string) {
 	viper.AutomaticEnv() // read in environment variables that match
 
 	setDefaultValues()
+	return nil
 }
 
 func setDefaultValues() {
 	viper.SetDefault("idleTimeout", 6*time.Second)
 }
 
-func ReadConfigFile() {
+// ReadConfigFile reads the configuration file (if there is one) into CurrentConfig.
+// A missing configuration file is not an error, defaults are used in that case.
+func ReadConfigFile() error {
 	if err := viper.ReadInConfig(); err == nil {
 		// this is only populated _after_ ReadInConfig()
 		fmt.Printf("Using configuration file at: %s\n", viper.ConfigFileUsed())
-		LoadConfig()
+	} else {
+		var notFound viper.ConfigFileNotFoundError
+		if !errors.As(err, &notFound) && !errors.Is(err, fs.ErrNotExist) {
+			return fmt.Errorf("failed to read configuration file: %w", err)
+		}
 	}
 
-	validateConfig()
-}
-
-func LoadConfig() {
-	// load default configuration values
-	err := viper.Unmarshal(&CurrentConfig)
-	if err != nil {
-		fmt.Printf("unable to decode into struct, %v", err)
-		os.Exit(1)
+	if err := LoadConfig(); err != nil {
+		return err
 	}
+	return validateConfig(CurrentConfig)
 }
 
-func validateConfig() {
-	_ = &CurrentConfig
-	// TODO:
+// LoadConfig loads the configuration, including defaults, into CurrentConfig.
+func LoadConfig() error {
+	if err := viper.Unmarshal(&CurrentConfig); err != nil {
+		return fmt.Errorf("unable to decode configuration: %w", err)
+	}
+	return nil
+}
+
+func validateConfig(c Configuration) error {
+	if c.IdleTimeout <= 0 {
+		return fmt.Errorf("invalid idleTimeout: %s (must be greater than zero)", c.IdleTimeout)
+	}
+	return nil
 }

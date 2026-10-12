@@ -20,6 +20,44 @@ func reset(t *testing.T) {
 	})
 }
 
+func mustInit(t *testing.T, path string) {
+	t.Helper()
+	if err := InitConfig(path); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func mustRead(t *testing.T) {
+	t.Helper()
+	if err := ReadConfigFile(); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestReadConfigFile_InvalidYaml(t *testing.T) {
+	reset(t)
+	p := filepath.Join(t.TempDir(), "cfg.yaml")
+	if err := os.WriteFile(p, []byte("idleTimeout: [unclosed\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	mustInit(t, p)
+	if err := ReadConfigFile(); err == nil {
+		t.Fatal("expected error")
+	}
+}
+
+func TestReadConfigFile_InvalidIdleTimeout(t *testing.T) {
+	reset(t)
+	p := filepath.Join(t.TempDir(), "cfg.yaml")
+	if err := os.WriteFile(p, []byte("idleTimeout: -1s\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	mustInit(t, p)
+	if err := ReadConfigFile(); err == nil {
+		t.Fatal("expected error")
+	}
+}
+
 func TestReadConfigFile_FromFlagPath(t *testing.T) {
 	reset(t)
 	p := filepath.Join(t.TempDir(), "cfg.yaml")
@@ -33,8 +71,8 @@ idleTimeout: 15s
 		t.Fatal(err)
 	}
 
-	InitConfig(p)
-	ReadConfigFile()
+	mustInit(t, p)
+	mustRead(t)
 
 	if CurrentConfig.BacklightPath == nil || *CurrentConfig.BacklightPath != "/sys/class/leds/x::kbd_backlight" {
 		t.Fatalf("BacklightPath = %v", CurrentConfig.BacklightPath)
@@ -54,8 +92,8 @@ func TestReadConfigFile_DefaultIdleTimeout(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	InitConfig(p)
-	ReadConfigFile()
+	mustInit(t, p)
+	mustRead(t)
 
 	if CurrentConfig.IdleTimeout != 6*time.Second {
 		t.Fatalf("IdleTimeout = %v, want 6s", CurrentConfig.IdleTimeout)
@@ -67,11 +105,14 @@ func TestReadConfigFile_DefaultIdleTimeout(t *testing.T) {
 
 func TestReadConfigFile_MissingFile(t *testing.T) {
 	reset(t)
-	InitConfig(filepath.Join(t.TempDir(), "missing.yaml"))
-	ReadConfigFile() // must not panic or exit
+	mustInit(t, filepath.Join(t.TempDir(), "missing.yaml"))
+	mustRead(t) // missing file is not an error
 
 	if CurrentConfig.BacklightPath != nil || len(CurrentConfig.InputEventDevices) != 0 {
 		t.Fatalf("unexpected config: %+v", CurrentConfig)
+	}
+	if CurrentConfig.IdleTimeout != 6*time.Second {
+		t.Fatalf("IdleTimeout = %v, want default 6s", CurrentConfig.IdleTimeout)
 	}
 }
 
@@ -89,8 +130,8 @@ func TestInitConfig_SearchPaths(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	InitConfig("")
-	ReadConfigFile()
+	mustInit(t, "")
+	mustRead(t)
 
 	if CurrentConfig.IdleTimeout != 2*time.Second {
 		t.Fatalf("IdleTimeout = %v, want 2s", CurrentConfig.IdleTimeout)

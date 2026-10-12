@@ -18,8 +18,17 @@ func newFakeLight(t *testing.T, max, current string) string {
 	return dir
 }
 
+func mustNewLight(t *testing.T, dir string) Light {
+	t.Helper()
+	l, err := NewLight(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return l
+}
+
 func TestGetBrightness(t *testing.T) {
-	l := NewLight(newFakeLight(t, "3\n", "1\n"))
+	l := mustNewLight(t, newFakeLight(t, "3\n", "1\n"))
 	got, err := l.GetBrightness()
 	if err != nil {
 		t.Fatal(err)
@@ -31,7 +40,7 @@ func TestGetBrightness(t *testing.T) {
 
 func TestSetBrightness(t *testing.T) {
 	dir := newFakeLight(t, "4", "0")
-	l := NewLight(dir)
+	l := mustNewLight(t, dir)
 
 	if err := l.SetBrightness(0.5); err != nil {
 		t.Fatal(err)
@@ -52,22 +61,26 @@ func TestSetBrightness(t *testing.T) {
 
 func TestGetBrightness_ReadError(t *testing.T) {
 	dir := newFakeLight(t, "4", "0")
-	l := NewLight(dir)
+	l := mustNewLight(t, dir)
 	if err := os.Remove(filepath.Join(dir, Brightness)); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := l.GetBrightness(); err == nil {
+	got, err := l.GetBrightness()
+	if err == nil || got != 0 {
+		t.Fatalf("got (%f, %v), want (0, error)", got, err)
+	}
+}
+
+func TestNewLight_MissingMaxBrightness(t *testing.T) {
+	if _, err := NewLight(t.TempDir()); err == nil {
 		t.Fatal("expected error")
 	}
 }
 
-func TestNewLight_MissingMaxBrightnessPanics(t *testing.T) {
-	defer func() {
-		if recover() == nil {
-			t.Fatal("expected panic")
-		}
-	}()
-	NewLight(t.TempDir())
+func TestNewLight_ZeroMaxBrightness(t *testing.T) {
+	if _, err := NewLight(newFakeLight(t, "0", "0")); err == nil {
+		t.Fatal("expected error")
+	}
 }
 
 func TestDetectKeyboardBacklightIn(t *testing.T) {
@@ -77,8 +90,8 @@ func TestDetectKeyboardBacklightIn(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	got := detectKeyboardBacklightIn(dir)
-	if got == nil || *got != filepath.Join(dir, "asus::kbd_backlight") {
+	got, err := detectKeyboardBacklightIn(dir)
+	if err != nil || got == nil || *got != filepath.Join(dir, "asus::kbd_backlight") {
 		t.Fatalf("got %v", got)
 	}
 }
@@ -88,8 +101,8 @@ func TestDetectKeyboardBacklightIn_Keyboard(t *testing.T) {
 	if err := os.Mkdir(filepath.Join(dir, "dell::keyboard"), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if got := detectKeyboardBacklightIn(dir); got == nil {
-		t.Fatal("expected match")
+	if got, err := detectKeyboardBacklightIn(dir); err != nil || got == nil {
+		t.Fatalf("got (%v, %v), want match", got, err)
 	}
 }
 
@@ -98,7 +111,13 @@ func TestDetectKeyboardBacklightIn_None(t *testing.T) {
 	if err := os.Mkdir(filepath.Join(dir, "input3::capslock"), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if got := detectKeyboardBacklightIn(dir); got != nil {
-		t.Fatalf("got %v, want nil", *got)
+	if got, err := detectKeyboardBacklightIn(dir); err != nil || got != nil {
+		t.Fatalf("got (%v, %v), want (nil, nil)", got, err)
+	}
+}
+
+func TestDetectKeyboardBacklightIn_MissingDir(t *testing.T) {
+	if _, err := detectKeyboardBacklightIn(filepath.Join(t.TempDir(), "nope")); err == nil {
+		t.Fatal("expected error")
 	}
 }

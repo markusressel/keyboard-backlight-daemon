@@ -1,6 +1,8 @@
 package util
 
 import (
+	"errors"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -99,7 +101,10 @@ func TestFindFilesMatching(t *testing.T) {
 	}
 	writeFile(t, filepath.Join(byID, "usb-mouse"), "")
 
-	got := FindFilesMatching(dir, regexp.MustCompile(".*kbd.*"))
+	got, err := FindFilesMatching(dir, regexp.MustCompile(".*kbd.*"))
+	if err != nil {
+		t.Fatal(err)
+	}
 	sort.Strings(got)
 
 	// resolved real path is returned for both the file and the symlink
@@ -121,7 +126,32 @@ func TestFindFilesMatching(t *testing.T) {
 func TestFindFilesMatching_NoMatch(t *testing.T) {
 	dir := t.TempDir()
 	writeFile(t, filepath.Join(dir, "a"), "")
-	if got := FindFilesMatching(dir, regexp.MustCompile("zzz")); len(got) != 0 {
-		t.Fatalf("got %v, want empty", got)
+	got, err := FindFilesMatching(dir, regexp.MustCompile("zzz"))
+	if err != nil || len(got) != 0 {
+		t.Fatalf("got (%v, %v), want empty", got, err)
+	}
+}
+
+func TestFindFilesMatching_MissingDir(t *testing.T) {
+	got, err := FindFilesMatching(filepath.Join(t.TempDir(), "nope"), regexp.MustCompile(".*"))
+	if !errors.Is(err, fs.ErrNotExist) || len(got) != 0 {
+		t.Fatalf("got (%v, %v), want not-exist error", got, err)
+	}
+}
+
+func TestFindFilesMatching_BrokenSymlinkIsReportedAndSkipped(t *testing.T) {
+	dir := t.TempDir()
+	good := filepath.Join(dir, "good-kbd")
+	writeFile(t, good, "")
+	if err := os.Symlink(filepath.Join(dir, "missing"), filepath.Join(dir, "broken-kbd")); err != nil {
+		t.Fatal(err)
+	}
+
+	got, err := FindFilesMatching(dir, regexp.MustCompile(".*kbd.*"))
+	if err == nil {
+		t.Fatal("expected error for broken symlink")
+	}
+	if len(got) != 1 {
+		t.Fatalf("got %v, want only the valid file", got)
 	}
 }

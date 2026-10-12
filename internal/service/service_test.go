@@ -3,6 +3,9 @@ package service
 import (
 	"context"
 	"encoding/binary"
+	"errors"
+	"io"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"sync"
@@ -158,14 +161,36 @@ func TestListenToEvents(t *testing.T) {
 	}
 }
 
-func TestListenToEvents_MissingFilePanics(t *testing.T) {
-	defer func() {
-		if recover() == nil {
-			t.Fatal("expected panic")
-		}
-	}()
+func TestListenToEvents_MissingFile(t *testing.T) {
 	s := KbdService{}
-	_ = s.listenToEvents(filepath.Join(t.TempDir(), "nope"), make(chan Event, 1))
+	err := s.listenToEvents(filepath.Join(t.TempDir(), "nope"), make(chan Event, 1))
+	if !errors.Is(err, fs.ErrNotExist) {
+		t.Fatalf("got %v, want not-exist error", err)
+	}
+}
+
+func TestListenToEvents_TruncatedEvent(t *testing.T) {
+	p := filepath.Join(t.TempDir(), "events")
+	if err := os.WriteFile(p, inputEventBytes(1, 2, 3, 4, 5)[:10], 0o644); err != nil {
+		t.Fatal(err)
+	}
+	s := KbdService{}
+	err := s.listenToEvents(p, make(chan Event, 1))
+	if !errors.Is(err, io.ErrUnexpectedEOF) {
+		t.Fatalf("got %v, want unexpected EOF", err)
+	}
+}
+
+type failingLight struct{ fakeLight }
+
+func (f *failingLight) SetBrightness(float64) error { return errors.New("boom") }
+
+func TestUpdateState_SetBrightnessErrorDoesNotPanic(t *testing.T) {
+	l := &failingLight{fakeLight{brightness: 0.5}}
+	s := NewKbdService(config.Configuration{}, l)
+	s.updateState(true)
+	s.updateState(false)
+	s.restoreBrightness()
 }
 
 func TestWatchInputDevices_StopsOnCancel(t *testing.T) {
@@ -223,5 +248,44 @@ func TestControlLoop(t *testing.T) {
 	}
 	if v, _ := l.lastSet(); v != 0.6 {
 		t.Fatalf("final brightness = %f, want 0.6", v)
+	}
+}
+
+func TestRestoreBrightness_IdleTurnsLightBackOn(t *testing.T) {
+	l := &fakeLight{brightness: 0}
+	s := NewKbdService(config.Configuration{}, l)
+	s.targetBrightness = 0.7
+	s.userIdle = true
+
+	s.restoreBrightness()
+
+	if got, _ := l.lastSet(); got != 0.7 {
+		t.Fatalf("last set = %f, want 0.7", got)
+	}
+}
+
+func TestRestoreBrightness_ActiveKeepsUserBrightness(t *testing.T) {
+	l := &fakeLight{brightness: 0.3}
+	s := NewKbdService(config.Configuration{}, l)
+	s.targetBrightness = 0.7
+	s.userIdle = false
+
+	s.restoreBrightness()
+
+	if len(l.sets) != 0 {
+		t.Fatalf("expected no writes, got %v", l.sets)
+	}
+}
+
+func TestRestoreBrightness_ActiveButLightOffRestoresTarget(t *testing.T) {
+	l := &fakeLight{brightness: 0}
+	s := NewKbdService(config.Configuration{}, l)
+	s.targetBrightness = 0.7
+	s.userIdle = false
+
+	s.restoreBrightness()
+
+	if got, _ := l.lastSet(); got != 0.7 {
+		t.Fatalf("last set = %f, want 0.7", got)
 	}
 }
