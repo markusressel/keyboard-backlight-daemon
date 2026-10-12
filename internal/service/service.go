@@ -13,6 +13,7 @@ import (
 	"os/signal"
 	"path/filepath"
 	"regexp"
+	"sync"
 	"syscall"
 	"time"
 )
@@ -82,7 +83,7 @@ func (s *KbdService) Run() {
 		})
 	}
 	{
-		sig := make(chan os.Signal)
+		sig := make(chan os.Signal, 1)
 		signal.Notify(sig, os.Interrupt, syscall.SIGTERM, os.Kill)
 
 		g.Add(func() error {
@@ -209,6 +210,7 @@ func (s *KbdService) watchInputDevices(ctx context.Context) error {
 	kbdPattern := regexp.MustCompile(".*kbd.*")
 
 	// keeps track of active listeners
+	var listenersMu sync.Mutex
 	activeListeners := map[string]bool{}
 	tick := time.Tick(1 * time.Second)
 	for {
@@ -229,16 +231,23 @@ func (s *KbdService) watchInputDevices(ctx context.Context) error {
 			for _, p := range paths {
 				path, _ := filepath.EvalSymlinks(p)
 
+				listenersMu.Lock()
 				v, ok := activeListeners[path]
 				if ok && v == true {
+					listenersMu.Unlock()
 					continue
 				}
 
 				fmt.Printf("Listening to: %s\n", path)
 				activeListeners[path] = true
+				listenersMu.Unlock()
 
 				go func() {
-					defer func() { activeListeners[path] = false }()
+					defer func() {
+						listenersMu.Lock()
+						activeListeners[path] = false
+						listenersMu.Unlock()
+					}()
 					s.listenToEvents(path, inputEventChannel)
 				}()
 			}

@@ -40,9 +40,8 @@ Do not run the daemon binary against real hardware unless asked: it writes to `/
 - The code reads and writes sysfs and `/dev/input` devices, which usually need root or group membership. Unit tests must not depend on real devices; use `t.TempDir()` files or fake the `light.Light` interface.
 - `NewLight` panics if `max_brightness` is unreadable. `listenToEvents` panics if the device cannot be opened.
 - Input events are 24-byte Linux `input_event` structs, parsed little-endian in `internal/service/service.go`. This assumes a 64-bit platform (CI builds linux amd64 and arm64).
-- `internal/service/service.go` uses package-level channels and an `activeListeners` map that is shared across goroutines without locking. Be careful when touching concurrency there.
+- `internal/service/service.go` uses package-level channels; `activeListeners` is guarded by a mutex. Be careful when touching concurrency there.
 - Tests use `t.TempDir()` fakes and a `fakeLight` in `internal/service`. Untested on purpose: `KbdService.Run`, the polling loop in `watchInputDevices`, and `rootCmd.Run` (they need real devices or call `os.Exit`). `cmd.Execute` can only run once per process.
-- `go vet` reports a pre-existing unbuffered `signal.Notify` channel in `service.go`.
 - `config` tests set `homedir.DisableCache = true`; go-homedir otherwise caches `$HOME`.
 - Do not commit `bin/` or `.idea/`.
 
