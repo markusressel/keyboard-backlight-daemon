@@ -3,7 +3,6 @@ package util
 import (
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -12,13 +11,13 @@ import (
 )
 
 func ReadIntFromFile(path string) (value int, err error) {
-	data, err := ioutil.ReadFile(path)
+	data, err := os.ReadFile(path)
 	if err != nil {
 		return -1, err
 	}
 	text := string(data)
 	if len(text) <= 0 {
-		return 0, errors.New(fmt.Sprintf("File is empty: %s", path))
+		return 0, fmt.Errorf("file is empty: %s", path)
 	}
 	text = strings.TrimSpace(text)
 	value, err = strconv.Atoi(text)
@@ -32,17 +31,20 @@ func WriteIntToFile(value int, path string) error {
 		path = evaluatedPath
 	}
 	valueAsString := fmt.Sprintf("%d", value)
-	err = ioutil.WriteFile(path, []byte(valueAsString), 644)
+	err = os.WriteFile(path, []byte(valueAsString), 0o644)
 	return err
 }
 
-// FindFilesMatching finds all files in a given directory, matching the given regex
-func FindFilesMatching(path string, expr *regexp.Regexp) []string {
+// FindFilesMatching finds all files in a given directory, matching the given regex.
+// Entries that can't be resolved are skipped, but still reported through the returned error,
+// so the (possibly partial) result is always valid.
+func FindFilesMatching(path string, expr *regexp.Regexp) ([]string, error) {
 	var result []string
+	var errs []error
 	err := filepath.Walk(path, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
-			fmt.Printf("File error: %v\n", err)
-			os.Exit(1)
+			errs = append(errs, err)
+			return nil
 		}
 
 		if !info.IsDir() && expr.MatchString(info.Name()) {
@@ -58,7 +60,8 @@ func FindFilesMatching(path string, expr *regexp.Regexp) []string {
 
 			devicePath, err = filepath.EvalSymlinks(devicePath)
 			if err != nil {
-				panic(err)
+				errs = append(errs, err)
+				return nil
 			}
 
 			result = append(result, devicePath)
@@ -66,8 +69,8 @@ func FindFilesMatching(path string, expr *regexp.Regexp) []string {
 		return nil
 	})
 	if err != nil {
-		panic(err)
+		errs = append(errs, err)
 	}
 
-	return result
+	return result, errors.Join(errs...)
 }

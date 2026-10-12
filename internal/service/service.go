@@ -1,18 +1,21 @@
 package service
 
 import (
-	"bytes"
 	"context"
 	"encoding/binary"
+	"errors"
 	"fmt"
 	"github.com/markusressel/keyboard-backlight-daemon/internal/config"
 	"github.com/markusressel/keyboard-backlight-daemon/internal/light"
 	"github.com/markusressel/keyboard-backlight-daemon/internal/util"
 	"github.com/oklog/run"
+	"io"
+	"io/fs"
 	"os"
 	"os/signal"
 	"path/filepath"
 	"regexp"
+	"sync"
 	"syscall"
 	"time"
 )
@@ -82,20 +85,20 @@ func (s *KbdService) Run() {
 		})
 	}
 	{
-		sig := make(chan os.Signal)
-		signal.Notify(sig, os.Interrupt, syscall.SIGTERM, os.Kill)
+		sig := make(chan os.Signal, 1)
+		signal.Notify(sig, os.Interrupt, syscall.SIGTERM)
 
 		g.Add(func() error {
-			for {
-				s := <-sig
-				if s != nil {
-					fmt.Printf("Received '%s' signal, exiting...", s)
-					os.Exit(0)
-				}
+			select {
+			case s := <-sig:
+				fmt.Printf("Received '%s' signal, exiting...\n", s)
+			case <-ctx.Done():
 			}
+			// returning stops all other actors, which triggers
+			// controlLoop to restore the brightness before we exit
+			return nil
 		}, func(err error) {
 			cancel()
-			close(sig)
 		})
 	}
 
@@ -114,14 +117,34 @@ func (s KbdService) controlLoop(ctx context.Context) error {
 	for {
 		select {
 		case <-ctx.Done():
-			// (try to) restore brightness on exit
-			s.light.SetBrightness(s.targetBrightness)
+			s.restoreBrightness()
 			return nil
 		case isActive := <-userIdleChannel:
 			s.updateState(isActive)
 		case <-inputEventChannel:
 			s.onUserInteraction()
 		}
+	}
+}
+
+// restoreBrightness makes sure the light is not left off when the service exits,
+// since the hardware keeps its last brightness across reboots (e.g. for the
+// bootloader / disk encryption prompt before this daemon is running again).
+func (s *KbdService) restoreBrightness() {
+	if !s.userIdle {
+		// light is already on, keep whatever the user chose
+		if b, err := s.light.GetBrightness(); err == nil && b > 0 {
+			return
+		}
+	}
+	s.setBrightness(s.targetBrightness)
+}
+
+// setBrightness sets the brightness of the light and reports failures.
+// A failed write must not stop the service, the next state change will retry.
+func (s *KbdService) setBrightness(percentage float64) {
+	if err := s.light.SetBrightness(percentage); err != nil {
+		_, _ = fmt.Fprintf(os.Stderr, "Failed to set brightness to %f: %v\n", percentage, err)
 	}
 }
 
@@ -155,9 +178,9 @@ func (s *KbdService) updateState(userIdle bool) {
 			}
 		}
 
-		s.light.SetBrightness(0)
+		s.setBrightness(0)
 	} else {
-		s.light.SetBrightness(s.targetBrightness)
+		s.setBrightness(s.targetBrightness)
 	}
 }
 
@@ -167,27 +190,22 @@ func (s *KbdService) updateState(userIdle bool) {
 func (s KbdService) listenToEvents(path string, ch chan Event) error {
 	f, err := os.Open(path)
 	if err != nil {
-		panic(err)
+		return fmt.Errorf("failed to open input device: %w", err)
 	}
 	defer f.Close()
 
 	b := make([]byte, 24)
 
 	for {
-		_, err = f.Read(b)
+		_, err = io.ReadFull(f, b)
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to read from %s: %w", path, err)
 		}
 		event := Event{
 			Sec:  binary.LittleEndian.Uint64(b[0:8]),
 			Usec: binary.LittleEndian.Uint64(b[8:16]),
 			Type: binary.LittleEndian.Uint16(b[16:18]),
 			Code: binary.LittleEndian.Uint16(b[18:20]),
-		}
-		var value int32
-		err = binary.Read(bytes.NewReader(b[20:]), binary.LittleEndian, &value)
-		if err != nil {
-			continue
 		}
 		go func() {
 			ch <- event
@@ -209,7 +227,19 @@ func (s *KbdService) watchInputDevices(ctx context.Context) error {
 	kbdPattern := regexp.MustCompile(".*kbd.*")
 
 	// keeps track of active listeners
+	var listenersMu sync.Mutex
 	activeListeners := map[string]bool{}
+	// last error reported per source, to avoid logging the same error every tick
+	lastErrors := map[string]string{}
+	reportErr := func(source string, err error) {
+		listenersMu.Lock()
+		defer listenersMu.Unlock()
+		if lastErrors[source] == err.Error() {
+			return
+		}
+		lastErrors[source] = err.Error()
+		_, _ = fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+	}
 	tick := time.Tick(1 * time.Second)
 	for {
 		select {
@@ -221,25 +251,43 @@ func (s *KbdService) watchInputDevices(ctx context.Context) error {
 				paths = append(paths, path)
 			}
 
-			matches := util.FindFilesMatching("/dev/input/by-id", kbdPattern)
+			matches, err := util.FindFilesMatching("/dev/input/by-id", kbdPattern)
+			if err != nil && !errors.Is(err, fs.ErrNotExist) {
+				reportErr("/dev/input/by-id", err)
+			}
 			for _, match := range matches {
 				paths = append(paths, match)
 			}
 
 			for _, p := range paths {
-				path, _ := filepath.EvalSymlinks(p)
+				path, err := filepath.EvalSymlinks(p)
+				if err != nil {
+					if !errors.Is(err, fs.ErrNotExist) {
+						reportErr(p, err)
+					}
+					continue
+				}
 
+				listenersMu.Lock()
 				v, ok := activeListeners[path]
 				if ok && v == true {
+					listenersMu.Unlock()
 					continue
 				}
 
 				fmt.Printf("Listening to: %s\n", path)
 				activeListeners[path] = true
+				listenersMu.Unlock()
 
 				go func() {
-					defer func() { activeListeners[path] = false }()
-					s.listenToEvents(path, inputEventChannel)
+					defer func() {
+						listenersMu.Lock()
+						activeListeners[path] = false
+						listenersMu.Unlock()
+					}()
+					if err := s.listenToEvents(path, inputEventChannel); err != nil {
+						reportErr(path, err)
+					}
 				}()
 			}
 		}
