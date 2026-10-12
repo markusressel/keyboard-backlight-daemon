@@ -13,7 +13,11 @@ const (
 )
 
 func DetectKeyboardBacklight() *string {
-	files, err := ioutil.ReadDir(ledsPath)
+	return detectKeyboardBacklightIn(ledsPath)
+}
+
+func detectKeyboardBacklightIn(dir string) *string {
+	files, err := ioutil.ReadDir(dir)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -21,7 +25,7 @@ func DetectKeyboardBacklight() *string {
 	r := regexp.MustCompile(".*(kbd|keyboard).*")
 	for _, f := range files {
 		if r.MatchString(f.Name()) {
-			abs, err := filepath.Abs(path.Join(ledsPath, f.Name()))
+			abs, err := filepath.Abs(path.Join(dir, f.Name()))
 			if err != nil {
 				continue
 			}
